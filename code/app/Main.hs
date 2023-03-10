@@ -46,10 +46,10 @@ runInstance i = "The order type of the lexicographic order over " ++
                            DI _ str -> str
                            I a -> "some language recognized by a " ++
                                   show (countStates a) ++
-                                  "-state(s) DFA that I build somehow"
+                                  "-state(s) DFA that I built somehow"
             o = case i of 
-                 DI a _ -> automata2OrderTyp a
-                 I a    -> automata2OrderTyp a
+                 DI a _ -> automaton2OrderTyp a
+                 I a    -> automaton2OrderTyp a
 
 main :: IO ()
 main = do

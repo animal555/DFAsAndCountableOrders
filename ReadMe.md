@@ -2,7 +2,7 @@ Summary
 =======
 
 OK this is a bit bare-bones for now, but the idea is that I coded my solution
-to the problem of computing the order-type of `(L, ≤lex)` for `L ⊂ Σ*` regular
+to the problem of computing the order-type of (L, ≤lex) for L ⊂ Σ\* regular
 languages given by DFA.
 
 A solution to this was given in
@@ -27,12 +27,12 @@ Olivier Carton, Thomas Colcombet, Gabriele Puppis
     J. Symb. Log. 83(3): 1147-1189 (2018)
 
 
-I am not sure I like very much the solutions in those two papers in
+I am not sure I like very much the solutions in those first two papers in
 terms of aesthetics and I am pleased with what I have although it is
 inefficient for now.
 
 I put a lot more comments in the source files, which I hope are organized
-somewhat OK now. In particular code/src/RCOEqns.
+somewhat OK now. In particular `code/src/RCOEqns`.
 
 Running
 =======
@@ -41,11 +41,20 @@ Assuming you have `cabal`, do `cd` into `code` and try `cabal run` and
 everything should work fine. Then look at `app/Main.hs` and then
 `src/Examples.hs` if you are in a hurry to test your own examples I guess.
 
-Abbreviations
-=============
+Abbreviations and notations
+===========================
 
 * DFA = Deterministic Finite Automata
 * RCO = Regular Countable (linear/total) Orders (or order types)
+* 0   = the order type of the empty order
+* 1   = the order type of a singleton
+* ω   = the order type of the positive integers (ℕ, <)
+* -ω  = the order type of the positive integers (ℕ, >) with the order reversed
+* η   = the order type of the rationals (ℚ, <)
+* middle dot is the lexicographic product of order types
+* +   = the lexicographic sum of order types
+* braces are used for finite sets
+* Pη  = shuffle of the order types in the set P
 
 TODOs
 =====

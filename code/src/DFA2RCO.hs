@@ -30,9 +30,9 @@ state2Eqn chars delta final q
 
 -- Produce the system of equation, solve it, and lookup the value of the
 -- initial state in the solution vector
-automata2OrderTyp :: Finite a => DFA a -> OrdTy Void
-automata2OrderTyp (Aut q0 delta final) =
-  snd . fromJust $ find (\(v,_) -> v == q0) solved
+automaton2OrderTyp :: Finite a => DFA a -> OrdTy Void
+automaton2OrderTyp (Aut q0 delta final) =
+  simplify . snd . fromJust $ find (\(v,_) -> v == q0) solved
   where
     eqns = map (\q -> (q, state2Eqn allValues delta final q)) allValues
     solved = solveEqnSys eqns

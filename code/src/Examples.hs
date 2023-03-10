@@ -26,7 +26,7 @@ exDFA1 = Aut (Left Nothing) delta f
         delta _ (Left (Just _)) = Left Nothing
         delta _ (Right _) = Right False
 
--- >>>  automata2OrderTyp exDFA1
+-- >>>  automaton2OrderTyp exDFA1
 -- LSum (Shuffle [LProdOmOp (LSum (Shuffle [LProdOmOp OOne]) (LProdOmOp OOne))]) (LProdOmOp (LSum (Shuffle [LProdOmOp OOne]) (LProdOmOp OOne)))
 
 -- 2] a DFA recognizing (0 + 1)*1
@@ -35,7 +35,7 @@ exDFA1 = Aut (Left Nothing) delta f
 exDFA2 :: DFA Bool
 exDFA2 = Aut False const id
 
--- >>> automata2OrderTyp exDFA2
+-- >>> automaton2OrderTyp exDFA2
 -- Shuffle [OOne]
 
 -- 3] (0 + 1)*
@@ -43,7 +43,7 @@ exDFA2 = Aut False const id
 exDFA3 :: DFA Bool
 exDFA3 = Aut () (\ _ _ -> ()) (const True)
 
--- >>> automata2OrderTyp exDFA3
+-- >>> automaton2OrderTyp exDFA3
 -- LSum (LProdOm OOne) (Shuffle [LProdOm OOne])
 
 -- >>> simplify . initialSol $ osum [OOne, OVar Nothing, OVar Nothing]
@@ -128,7 +128,7 @@ exDFALSum (Aut q0 deltal fq) (Aut r0 deltar fr) =
 exDFAOm :: DFA Bool
 exDFAOm = Aut True (&&) id
 
--- >>> simplify . automata2OrderTyp $ exDFAOm
+-- >>> automaton2OrderTyp $ exDFAOm
 -- LProdOm OOne
 
 -- Automaton realizing -ω
@@ -143,10 +143,10 @@ exDFAOmOp = Aut (Just init) delta (== Just final)
 exDFAOne :: DFA ()
 exDFAOne = Aut True (\_ _ -> False) id
 
--- >>> simplify . automata2OrderTyp $ exDFAOmOp
+-- >>> automaton2OrderTyp $ exDFAOmOp
 -- LProdOmOp OOne
 
--- >>> simplify . automata2OrderTyp $ exDFAShuffle2 exDFAOm exDFAOmOp
+-- >>> automaton2OrderTyp $ exDFAShuffle2 exDFAOm exDFAOmOp
 -- Shuffle [LProdOm OOne,LProdOmOp OOne]
 
 -- OK below are a series of examples that show off how the shuffle operator
@@ -160,7 +160,7 @@ exDFASD1 = exDFAShuffle2 exDFAOm exDFAOmOp
 -- >>> countStates exDFASD1
 -- 7
 
--- >>> automata2OrderTyp $ exDFASD1
+-- >>> automaton2OrderTyp $ exDFASD1
 -- Shuffle [LProdOm OOne,LProdOmOp OOne]
 
 exDFASD2 = exDFAShuffle2 (exDFALSum exDFAOm exDFAOmOp) exDFASD1
@@ -168,7 +168,7 @@ exDFASD2 = exDFAShuffle2 (exDFALSum exDFAOm exDFAOmOp) exDFASD1
 -- >>> countStates exDFASD2
 -- 16
 
--- >>> automata2OrderTyp $ exDFASD2
+-- >>> automaton2OrderTyp $ exDFASD2
 -- Shuffle [LSum (LProdOm OOne) (LProdOmOp OOne),Shuffle [LProdOm OOne,LProdOmOp OOne]]
 
 exDFASD3 = exDFALSum x x
@@ -178,7 +178,7 @@ exDFASD3 = exDFALSum x x
 -- >>> countStates exDFASD3
 -- 42
 
--- >>> automata2OrderTyp $ exDFASD3
+-- >>> automaton2OrderTyp $ exDFASD3
 -- LSum (Shuffle [OOne,Shuffle [LSum (LProdOm OOne) (LProdOmOp OOne),Shuffle [LProdOm OOne,LProdOmOp OOne]]]) (Shuffle [OOne,Shuffle [LSum (LProdOm OOne) (LProdOmOp OOne),Shuffle [LProdOm OOne,LProdOmOp OOne]]])
 
 -- Better not write the type of the alphabet for this one :)
