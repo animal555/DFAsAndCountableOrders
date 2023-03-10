@@ -69,13 +69,17 @@ if someone figured that one out...
 * It would be an interesting exercise to compute a representation for the
 initial algebras and not only the carriers I guess
 * Look further in the literature to see if this was written down in a palatable
-way. In particular stuff related to iteration theories.
+way. In particular stuff related to iteration theories. And probably
+Courcelle's papers on the topic.
 * Thanks to Haskell's laziness®, evalutating MSO properties (by way of
 ∘-algebras as discussed in the last reference above) might be substantially
 more efficient on examples than computing and displaying the order-type. I had
 some boilerplate I had used to start to test this on simple properties
 (e.g. "being well-ordered/scattered" or "having a minimal element"), but I lost
 it in a crash :( Not very long to redo though.
+But ultimately to optimize this further, it would probably be smart to actually
+inline the simplification given by ∘-algebras operations while solving the
+equations as well.
 
 
 Questions
