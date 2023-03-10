@@ -52,7 +52,7 @@ Abbreviations and notations
 * -ω  = the order type of the positive integers (ℕ, >) with the order reversed
 * η   = the order type of the rationals (ℚ, <)
 * middle dot is the lexicographic product of order types
-* +   = the lexicographic sum of order types
+* \+   = the lexicographic sum of order types
 * braces are used for finite sets
 * Pη  = shuffle of the order types in the set P
 
