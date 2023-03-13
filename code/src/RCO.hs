@@ -206,6 +206,7 @@ simplifyStep (LProdOmOp o)
     | not (isZero (const True) o) && oFinite (const False) o
         = LProdOmOp OOne
 simplifyStep (LProdOm (Shuffle os)) = Shuffle os
+simplifyStep (LProdOmOp (Shuffle os)) = Shuffle os
 simplifyStep (LProdOmOp (LSum x y))
     | absorbsr x y = LProdOmOp y
     | absorbsi y x x = LSum (LProdOmOp x) y

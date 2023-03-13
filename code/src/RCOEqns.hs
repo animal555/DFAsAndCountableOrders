@@ -28,13 +28,13 @@
 -- I don't like the historic solution by Heilbrunner that still seems to be in
 -- use in the 2010s for aesthetics reasons. It sort of does a tedious analysis
 -- of the dependency graph of the variables, and solve iteratively strongly
--- connected components by doing a disgusting amount of substitutions. But it
+-- connected components by doing a disstressing amount of substitutions. But it
 -- seems it can lead to some PTIME algorithms to decide the isomorphism of
 -- order types given by automata if we do some smart succint representation of
 -- those regular order types.
 --
 -- Here I use a solution I came up with, which I suspect was already known
--- (probably by Stephen L. Blum and Zoltan Esik I would think?)
+-- (probably by Blum/Esik among others I would think?)
 -- Maybe there is some advantage to Heilbrunner's solution, but it is not
 -- obvious to me; without modification to the grammar of regular order types,
 -- they are both exponential (that can be size of the solution). But it might
@@ -159,7 +159,7 @@ initialSol o | not $ occurs Nothing o = fmap fromJust o
 -- of substitutions to get solutions to system of equations. Since the size
 -- of intermediate expressions get big (and inspected by all the helpers
 -- functions above), I simplify intermediate parameterized solutions to gain
--- in efficiency (although simplifying is not that trivial either).
+-- a bit in efficiency (although simplifying is not that trivial either).
 --
 -- It would be faster to do hash-consing + memoization for all functions
 -- without simplifying probably, but I am too lazy to do that
