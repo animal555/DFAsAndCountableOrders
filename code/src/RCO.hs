@@ -37,12 +37,14 @@ import MyPrelude
 data OrdTy a =
      OVar a                   -- A variable
    | OOne                     -- The singleton order
-   | OZero                    -- The empty order
-   | LSum (OrdTy a) (OrdTy a) -- The lexicographic sum (F, G) ↦ F + G
+   | LSum [OrdTy a]           -- The lexicographic sum (F₁, F₂) ↦ F + G, n-ary
    | LProdOm (OrdTy a)        -- the map F ↦ ω · F (iterate F + ... + F + ...)
    | LProdOmOp (OrdTy a)      -- the map F ↦ ω^op · F (ω^op is just ω reversed)
    | Shuffle [OrdTy a]        -- the most mysterious operator
  deriving (Eq, Show, Ord)     --    {F₁, ..., F_n} ↦ {F₁, ..., F_n}^η
+
+lBSum x y = LSum [x, y]
+oZero = LSum []
 
 -- # Additional explanations
 -- 
@@ -76,10 +78,9 @@ instance Functor OrdTy where
   fmap f (OVar x) = OVar (f x)
   fmap f (LProdOm o) = LProdOm (fmap f o)
   fmap f (LProdOmOp o) = LProdOmOp (fmap f o)
-  fmap f (LSum o r) = LSum (fmap f o) (fmap f r)
+  fmap f (LSum os) = LSum (map (fmap f) os)
   fmap f (Shuffle os) = Shuffle (map (fmap f) os)
   fmap _ OOne = OOne
-  fmap _ OZero = OZero
 
 instance Applicative OrdTy where
   pure = OVar
@@ -91,10 +92,9 @@ instance Monad OrdTy where
   (OVar x) >>= f = f x
   (LProdOm o) >>= f = LProdOm (o >>= f)
   (LProdOmOp o) >>= f = LProdOmOp (o >>= f)
-  (LSum o r) >>= f = LSum (o >>= f) (r >>= f)
+  (LSum os) >>= f = LSum (map (>>= f) os)
   (Shuffle os) >>= f = Shuffle (map (>>= f) os)
   OOne >>= f = OOne
-  OZero >>= f = OZero
 
 
 -- Pretty-printing; in particular shuffles for n = 1 are simplified
@@ -110,7 +110,7 @@ instance Monad OrdTy where
 -- Binary operators: +, · 
 -- Shuffle operator(k ≠ 1): {τ₁, ..., τ_k}η
 showOrdTy :: Show a => OrdTy a -> String
-showOrdTy OZero = "0"
+showOrdTy (LSum []) = "0"
 showOrdTy OOne  = "1"
 showOrdTy (LProdOm OOne) = "ω"
 showOrdTy (LProdOmOp OOne) = "-ω"
@@ -120,19 +120,18 @@ showOrdTy (Shuffle [OOne]) = "η"
 showOrdTy (Shuffle [x])    = strCDot "η" $ showOrdTyG x
 showOrdTy (Shuffle os) = "{ " ++ strList "," (map showOrdTy os) ++ " }η"
 showOrdTy (OVar s) = show s
-showOrdTy (LSum x y) = showOrdTy x ++ " + " ++ showOrdTy y
+showOrdTy (LSum os) = strList " +" (map showOrdTy os)
 
 -- helper function for when adding parentheses might be necessary
 showOrdTyG :: Show a => OrdTy a -> String
-showOrdTyG (LSum x y) = strPar (showOrdTy (LSum x y))
+showOrdTyG (LSum os) = strPar (showOrdTy (LSum os))
 showOrdTyG o          = showOrdTy o
 
 -- Is the represented order type equal to 0?
 isZero :: (t -> Bool) -> OrdTy t -> Bool
 isZero p (OVar x) = p x
-isZero p OZero = True
 isZero p OOne  = False
-isZero p (LSum o r) = isZero p o && isZero p r
+isZero p (LSum os) = all (isZero p) os
 isZero p (LProdOm o) = isZero p o
 isZero p (LProdOmOp o) = isZero p o
 isZero p (Shuffle os) = all (isZero p) os
@@ -143,62 +142,56 @@ dualize (OVar x) = OVar x
 dualize OOne = OOne
 dualize (LProdOm o) = LProdOmOp (dualize o)
 dualize (LProdOmOp o) = LProdOm (dualize o)
-dualize OZero = OZero
 dualize (Shuffle os) = Shuffle (map dualize os)
-dualize (LSum o r) = LSum (dualize r) (dualize o)
-
--- n-ary sums
-osum :: [OrdTy a] -> OrdTy a
-osum []  = OZero
-osum [o] = o
-osum (o : os) = LSum o (osum os)
+dualize (LSum os) = LSum (reverse . map dualize $ os)
 
 -- partial inverse to our bespoke n-ary function
-osumInv :: OrdTy a -> [OrdTy a]
-osumInv (LSum x y) = osumInv x ++ osumInv y
-osumInv o = [o]
+lSumInv :: OrdTy a -> [OrdTy a]
+lSumInv (LSum os) = concatMap lSumInv os
+lSumInv o = [o]
 
 -- Is the order type finite? (the first argument says whether variables
 -- are meant to be finite (not a very useful features :/))
 oFinite :: (t -> Bool) -> OrdTy t -> Bool
-oFinite p OZero = True
 oFinite p OOne = True
-oFinite p (LSum x y) = oFinite p x && oFinite p y
+oFinite p (LSum os) = all (oFinite p) os
 oFinite p (LProdOm x) = isZero p x
 oFinite p (LProdOmOp x) = isZero p x
 oFinite p (Shuffle os) = all (isZero p) os
 oFinite p (OVar x) = p x
 
--- absorbsl τ σ is true if and only if τ · σ = σ
+-- absorbsl τ σ is true when τ · σ = σ
 absorbsl :: Eq a => OrdTy a -> OrdTy a -> Bool
-absorbsl OZero _ = True
 absorbsl x (LProdOm y) = x == y || absorbsl x y
 absorbsl OOne _ = False
 absorbsl (OVar _) _ = False
-absorbsl (LSum x y) z = absorbsl y z && absorbsl x z
+absorbsl (LSum os) z = all (`absorbsl` z) os
 absorbsl (Shuffle os) (Shuffle os') = os == os'
 absorbsl (Shuffle _) _ = False
 absorbsl _ _ = False
 
--- absorbsl τ σ is true if and only if σ · τ = σ
+-- absorbsl τ σ is true if σ · τ = σ
 absorbsr :: Eq a => OrdTy a -> OrdTy a -> Bool
 absorbsr x y = absorbsl (dualize x) (dualize y)
 
--- absorbsl τ σ is true if and only if σ · τ · σ = σ
+osum = LSum
+
+-- absorbsl τ σ is true if σ · τ · σ = σ
 absorbsi :: Eq a => OrdTy a -> OrdTy a -> OrdTy a -> Bool
 absorbsi x (Shuffle osl) (Shuffle osr)
    | x `elem` osl && x `elem` osr = True
-absorbsi x l r = any (\(xl, xr) -> absorbsr (osum xl) l && absorbsl (osum xr) r) (splits (osumInv x))
+absorbsi x l r = any (\(xl, xr) -> absorbsr (osum xl) l && absorbsl (osum xr) r) (splits (lSumInv x))
   where splits [] = [([],[])]
         splits (x : xs) = ([], x : xs) : map (\(a,b) -> (x:a, b)) (splits xs)
 
 -- This is supposed to find a top-level rewriting to a simpler term and
 -- just do it.
 simplifyStep :: Ord a => OrdTy a -> OrdTy a
-simplifyStep (LSum x y) | absorbsl x y = y
-                        | absorbsr y x = x
-simplifyStep (LProdOm OZero) = OZero
-simplifyStep (LProdOmOp OZero) = OZero
+simplifyStep (LSum [x, y]) | absorbsl x y = y
+                           | absorbsr y x = x
+simplifyStep (LSum [x]) = x
+simplifyStep (LProdOm (LSum [])) = oZero
+simplifyStep (LProdOmOp (LSum [])) = oZero
 simplifyStep (LProdOm o)
     | not (isZero (const True) o) && oFinite (const False) o
         = LProdOm OOne
@@ -207,16 +200,16 @@ simplifyStep (LProdOmOp o)
         = LProdOmOp OOne
 simplifyStep (LProdOm (Shuffle os)) = Shuffle os
 simplifyStep (LProdOmOp (Shuffle os)) = Shuffle os
-simplifyStep (LProdOmOp (LSum x y))
+simplifyStep (LProdOmOp (LSum [x,y]))
     | absorbsr x y = LProdOmOp y
-    | absorbsi y x x = LSum (LProdOmOp x) y
-simplifyStep (LProdOm (LSum x y))
+    | absorbsi y x x = lBSum (LProdOmOp x) y
+simplifyStep (LProdOm (LSum [x, y]))
     | absorbsl y x = LProdOm x
-    | absorbsi x y y = LSum x (LProdOm y)
-simplifyStep (LProdOm (LSum (Shuffle os) x))
-    | x `elem` os = Shuffle os 
-simplifyStep (LProdOmOp (LSum x (Shuffle os)))
-    | x `elem` os = Shuffle os 
+    | absorbsi x y y = lBSum x (LProdOm y)
+simplifyStep (LProdOm (LSum (Shuffle os :  x : ys)))
+    | x `elem` os = LSum (Shuffle os : ys)
+simplifyStep (LProdOmOp (LSum (x : Shuffle os : ys)))
+    | x `elem` os = LSum (Shuffle os : ys)
 {- simplifyStep (LProdOm x) | osumInv x' /= osumInv x'' = LProdOm x''
   where x' = LSum x x
         x'' = simplifyStep x'
@@ -224,8 +217,8 @@ simplifyStep (LProdOmOp x) | osumInv x' /= osumInv x'' = LProdOmOp x''
   where x' = LSum x x
         x'' = simplifyStep x'
 -}
-simplifyStep (LSum y (LSum x z))
-   | absorbsi x y z = LSum y z
+simplifyStep (LSum [y, LSum [x, z]])
+   | absorbsi x y z = LSum [y, z]
 simplifyStep (Shuffle (x : os)) =
       Shuffle (normalizeShuffle $ tryReduceShuffle [] x os)
      where tryReduceShuffleWith x os =
@@ -241,8 +234,8 @@ simplifyStep (Shuffle (x : os)) =
                Nothing -> case os' of
                            [] -> x : os
                            (y : ys) -> tryReduceShuffle (x : os) y ys
-           normalizeShuffle = sort . nub . delete OZero
-           sin z i = z `elem` i || z == OZero
+           normalizeShuffle = sort . nub . delete oZero
+           sin z i = z `elem` i || z == oZero
            -- scompat is probably the implementation of the most subtle shuffle
            -- equation in the equational theory of those regular countable
            -- linear order types
@@ -252,7 +245,7 @@ simplifyStep (Shuffle (x : os)) =
                                              all (`sin` i) i' &&
                                              all (`sin` i') i
                           Nothing -> False
-simplifyStep (Shuffle []) = OZero
+simplifyStep (Shuffle []) = oZero
 -- if we are in none of these cases, we try to look for a sum pattern of size
 -- two up to associativity and simplify that, otherwise same with a pattern
 -- of size 3 (not super nice, could be beautified, but I just wanted to
@@ -261,7 +254,7 @@ simplifyStep o = if o == o' then
                    foldZip trySimplifyStepTriple (const o) (consTriples os)
                  else o'
   where o' = foldZip trySimplifyStepPair (const o) (consPairs os)
-        os = osumInv o
+        os = lSumInv o
         consPairs xs | length xs >= 3 = zip xs (tail xs)
                      | otherwise      = []
         consTriples xs | length xs >= 4 =
@@ -272,14 +265,14 @@ simplifyStep o = if o == o' then
                Nothing
              else
                Just . osum $ (reverse . map fst) pre ++ o''' : map snd post
-          where o'' = LSum o o'
+          where o'' = LSum [o, o']
                 o''' = simplifyStep o''
         trySimplifyStepTriple pre ((o, o'), o'') post =
              if osu == osus then
                Nothing
              else
                Just . osum $ (reverse . map (fst . fst)) pre ++ osus : map snd post
-          where osu = LSum o (LSum o' o'')
+          where osu = LSum [o, LSum [o', o'']]
                 osus = simplifyStep osu
 
 -- This is a helper function for simplifyStep that flattens expressions for
@@ -287,25 +280,30 @@ simplifyStep o = if o == o' then
 --      τ + P^η + σ
 --  into a more well behaved value Just (τ, P, σ) when possible
 extractOuterShuffle :: OrdTy a -> Maybe (OrdTy a, [OrdTy a], OrdTy a)
-extractOuterShuffle (LSum x (LSum (Shuffle os) y)) = Just (x, os, y)
-extractOuterShuffle (Shuffle os) = Just (OZero, os, OZero)
-extractOuterShuffle (LSum x (Shuffle os)) = Just (x, os, OZero)
-extractOuterShuffle (LSum (Shuffle os) x) = Just (OZero, os, x)
+extractOuterShuffle (LSum [x, LSum [Shuffle os, y]]) = Just (x, os, y)
+extractOuterShuffle (Shuffle os) = Just (oZero, os, oZero)
+extractOuterShuffle (LSum [x, Shuffle os]) = Just (x, os, oZero)
+extractOuterShuffle (LSum [Shuffle os, x]) = Just (oZero, os, x)
 extractOuterShuffle _ = Nothing
 
 -- Rewrite the associativity of + one way
 rewriteAssocStep :: OrdTy a -> OrdTy a
-rewriteAssocStep (LSum (LSum x y) z) = LSum x (LSum y z)
+rewriteAssocStep (LSum [LSum [x, y], z]) = LSum [x, LSum [y, z]]
 rewriteAssocStep o = o
 
 -- Rewrite the associativity of + the other way
 rewriteAssocStepRev :: OrdTy a -> OrdTy a
-rewriteAssocStepRev (LSum x (LSum y z)) = LSum (LSum x y) z
+rewriteAssocStepRev (LSum [x, LSum [y, z]]) = lBSum (lBSum x y) z
 rewriteAssocStepRev o = o
+
+-- Rewrite n-ary products into binary products
+dissociate :: OrdTy a -> OrdTy a
+dissociate (LSum (x : y : z : zs)) = lBSum (lBSum x y) $ dissociate (LSum (z : zs))
+dissociate o = o
 
 -- Saturating up to congruence a function
 saturateOrdTy :: (OrdTy a -> OrdTy a) -> OrdTy a -> OrdTy a
-saturateOrdTy f (LSum x y) = f (LSum (saturateOrdTy f x) (saturateOrdTy f y))
+saturateOrdTy f (LSum os) = f (LSum (map (saturateOrdTy f) os))
 saturateOrdTy f (LProdOm x) = f (LProdOm (saturateOrdTy f x))
 saturateOrdTy f (LProdOmOp x) = f (LProdOmOp (saturateOrdTy f x))
 saturateOrdTy f (Shuffle xs) = f (Shuffle (map (saturateOrdTy f) xs))
@@ -318,4 +316,5 @@ simplify = fixFin (saturateOrdTy rewriteAssocStep) .
            fixFin (saturateOrdTy simplifyStep) .
            fixFin (saturateOrdTy rewriteAssocStepRev) .
            fixFin (saturateOrdTy simplifyStep) .
-           fixFin (saturateOrdTy rewriteAssocStep)
+           fixFin (saturateOrdTy rewriteAssocStep) .
+           fixFin (saturateOrdTy dissociate)

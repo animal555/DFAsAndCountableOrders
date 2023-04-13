@@ -59,8 +59,8 @@ Abbreviations and notations
 TODOs
 =====
 
-* Make LSum associative on the nose
-* Generalize/clean up by going to countable words directly
+* ~~Make LSum associative on the nose~~ maybe clean the simplification algo
+* Generalize/clean up by going to countable words directly?
 * Maybe having a nice web interface to draw automata and get an answer would
 be sweet - but generaly a more useful Main.hs would be nice already
 * Some visualisation for countable linear orders/countable words? I am not sure

@@ -69,7 +69,7 @@ getVars :: OrdTy b -> [b]
 getVars (OVar x) = [x]
 getVars (LProdOm o) = getVars o
 getVars (LProdOmOp o) = getVars o
-getVars (LSum o r) = getVars o ++ getVars r
+getVars (LSum os) = concatMap getVars os
 getVars (Shuffle os) = concatMap getVars os
 getVars _ = []
 
@@ -91,13 +91,14 @@ occursOnce x o = length (filter (== x) $ getVars o) == 1
 -- What is the largest prefix of the parameterized order type before the
 -- variable Nothing occurs?
 nPrefix :: Eq b => OrdTy (Maybe b) -> OrdTy b
-nPrefix (OVar Nothing) = OZero
+nPrefix (OVar Nothing) = oZero
 nPrefix o | not $ occurs Nothing o = fmap fromJust o
-nPrefix (LSum o r) | occurs Nothing o = nPrefix o
-                   | otherwise = LSum (nPrefix o) (nPrefix r)
+nPrefix (LSum []) = oZero
+nPrefix (LSum (o : os)) | occurs Nothing o = nPrefix o
+                        | otherwise = lBSum (fmap fromJust o) (nPrefix (LSum os))
 nPrefix (LProdOm o) = nPrefix o
-nPrefix (LProdOmOp o) = OZero
-nPrefix (Shuffle os) = OZero
+nPrefix (LProdOmOp o) = oZero
+nPrefix (Shuffle os) = oZero
 nPrefix o = fmap fromJust o
 
 
@@ -108,12 +109,14 @@ nSuffix = dualize . nPrefix . dualize
 -- Now what are the order types that may occur *between* two occurences of
 -- Nothing?
 nInfixes :: Eq b => OrdTy (Maybe b) -> [OrdTy b]
-nInfixes (LSum o r) = nInfixes o ++ nInfixes r ++ interstice
+nInfixes (LSum []) = []
+nInfixes (LSum [o]) = nInfixes o
+nInfixes (LSum (o : r : os)) = nInfixes o ++ nInfixes (LSum (r : os)) ++ interstice
   where interstice | occurs Nothing o &&
-                     occurs Nothing r = [LSum (nSuffix o) (nPrefix r)]
+                     occurs Nothing r = [lBSum (nSuffix o) (nPrefix r)]
                    | otherwise = []
-nInfixes (LProdOm o)   = nInfixes (LSum o o)
-nInfixes (LProdOmOp o) = nInfixes (LSum o o)
+nInfixes (LProdOm o)   = nInfixes (lBSum o o)
+nInfixes (LProdOmOp o) = nInfixes (lBSum o o)
 nInfixes (Shuffle os) = concatMap nInfixes os
 nInfixes _ = []
 
@@ -124,11 +127,11 @@ nInfixes _ = []
 -- in, say η · Y + ω · (1 + X) 
 hasMinimalEVar :: Eq a => OrdTy (Maybe a) -> Bool
 hasMinimalEVar (OVar Nothing) = True
-hasMinimalEVar (LSum o o') = hasMinimalEVar o ||
-                             not (occurs Nothing o) &&
-                             hasMinimalEVar o'
+hasMinimalEVar (LSum []) = False
+hasMinimalEVar (LSum [o]) = hasMinimalEVar o
+hasMinimalEVar (LSum (o : os)) = hasMinimalEVar o || not (occurs Nothing o)
+                                                   && hasMinimalEVar (LSum os)
 hasMinimalEVar OOne = False
-hasMinimalEVar OZero = False
 hasMinimalEVar (LProdOm o) = hasMinimalEVar o
 hasMinimalEVar (LProdOmOp _) = False
 hasMinimalEVar (Shuffle _) = False
@@ -165,7 +168,7 @@ initialSol o | not $ occurs Nothing o = fmap fromJust o
 -- without simplifying probably, but I am too lazy to do that
 
 solveEqnSys :: Ord a => [(a, OrdTy a)] -> [(a, OrdTy Void)]
-solveEqnSys eqns = map (\(v,s) -> (v, s >> OZero)) $ solveEqnSysR eqns
+solveEqnSys eqns = map (\(v,s) -> (v, s >> oZero)) $ solveEqnSysR eqns
 
 solveEqnSysR :: Ord a => [(a, OrdTy a)] -> [(a, OrdTy a)]
 solveEqnSysR [] = []
